@@ -1,8 +1,8 @@
-// background.ts
-
 import { TabManagerService } from "./services/TabManagerService";
 
 const tabManagerService = new TabManagerService(60000); // Set the desired expiration time
+
+tabManagerService.initializeTabTimes();
 
 // Update the timestamp when the tab is first created or activated
 chrome.tabs.onCreated.addListener((tab) => {
@@ -25,7 +25,7 @@ chrome.runtime.onMessage.addListener((message, sender) => {
 // Check inactive tabs at a regular interval and close them if necessary
 setInterval(() => {
 	tabManagerService.checkInactiveTabsAndCloseThem();
-}, 15000); // Check every 15 seconds
+}, 5000);
 
 // Remove tab information from the repository when a tab is closed
 chrome.tabs.onRemoved.addListener((tabId) => {

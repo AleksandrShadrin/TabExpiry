@@ -7,24 +7,35 @@ export class TabManagerService {
 		this.expirationTime = expirationTime; // Default to 1 minute
 	}
 
+	public async initializeTabTimes() {
+		const tabTimes = await TabRepository.getTabTimes();
+
+		chrome.tabs.query({}, async (tabs) => {
+			for (let i = 0; i < tabs.length; i++) {
+				if (tabs[i].id && !tabTimes[tabs[i].id]) {
+					await this.updateTabActivity(tabs[i].id);
+				}
+			}
+		});
+	}
+
 	// Check all tabs and close the ones that have been inactive longer than the expirationTime
-	public checkInactiveTabsAndCloseThem(): void {
-		chrome.storage.local.get(["expirationTime"], (result) => {
+	public checkInactiveTabsAndCloseThem() {
+		chrome.storage.local.get(["expirationTime"], async (result) => {
 			const expirationTime = result.expirationTime || this.expirationTime;
 
-			TabRepository.getTabTimes().then((tabTimes) => {
-				const currentTime: number = Date.now();
-				Object.entries(tabTimes).forEach(([tabIdStr, lastActiveTime]) => {
-					const tabId: number = parseInt(tabIdStr, 10);
-					if (currentTime - lastActiveTime > expirationTime) {
-						this.deleteTab(tabId);
-					}
-				});
+			const tabTimes = await TabRepository.getTabTimes();
+			const currentTime: number = Date.now();
+
+			Object.entries(tabTimes).forEach(([tabIdStr, lastActiveTime]) => {
+				const tabId: number = parseInt(tabIdStr, 10);
+				if (currentTime - lastActiveTime > expirationTime) {
+					this.deleteTab(tabId);
+				}
 			});
 		});
 	}
 
-	// Delete a tab from the browser and the repository
 	private deleteTab(tabId: number): void {
 		chrome.tabs.remove(tabId, () => {
 			// Check for errors, as the tab may have been closed manually
@@ -39,12 +50,12 @@ export class TabManagerService {
 	}
 
 	// Update the last active time for a tab
-	public updateTabActivity(tabId: number): void {
-		TabRepository.updateTabTime(tabId, Date.now());
+	public async updateTabActivity(tabId: number) {
+		await TabRepository.updateTabTime(tabId, Date.now());
 	}
 
 	// Remove a tab from the repository when it is closed
-	public onTabClosed(tabId: number): void {
-		TabRepository.removeTab(tabId);
+	public async onTabClosed(tabId: number) {
+		await TabRepository.removeTab(tabId);
 	}
 }

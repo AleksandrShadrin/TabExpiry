@@ -27,17 +27,15 @@ export class TabRepository {
 		});
 	}
 
-	static updateTabTime(tabId: number, time: number): Promise<void> {
-		return this.getTabTimes().then((tabTimes) => {
-			tabTimes[tabId] = time;
-			return this.setTabTimes(tabTimes);
-		});
+	static async updateTabTime(tabId: number, time: number): Promise<void> {
+		const tabTimes = await this.getTabTimes();
+		tabTimes[tabId] = time;
+		return await this.setTabTimes(tabTimes);
 	}
 
-	static removeTab(tabId: number): Promise<void> {
-		return this.getTabTimes().then((tabTimes) => {
-			delete tabTimes[tabId];
-			return this.setTabTimes(tabTimes);
-		});
+	static async removeTab(tabId: number): Promise<void> {
+		const tabTimes = await this.getTabTimes();
+		delete tabTimes[tabId];
+		return await this.setTabTimes(tabTimes);
 	}
 }
