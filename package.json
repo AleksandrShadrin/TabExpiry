@@ -1,0 +1,28 @@
+{
+	"name": "tabexpiry",
+	"version": "1.0.0",
+	"description": "Application to automatically close tabs",
+	"main": "index.js",
+	"scripts": {
+		"build": "webpack --mode production",
+		"watch": "webpack --mode development --watch",
+		"test": "jest"
+	},
+	"keywords": [],
+	"author": "",
+	"license": "ISC",
+	"devDependencies": {
+		"@babel/core": "^7.24.4",
+		"@babel/preset-env": "^7.24.4",
+		"@types/chrome": "^0.0.266",
+		"@types/jest": "^29.5.12",
+		"babel-jest": "^29.7.0",
+		"copy-webpack-plugin": "^12.0.2",
+		"jest": "^29.7.0",
+		"ts-jest": "^29.1.2",
+		"ts-loader": "^9.5.1",
+		"typescript": "^5.4.5",
+		"webpack": "^5.91.0",
+		"webpack-cli": "^5.1.4"
+	}
+}
