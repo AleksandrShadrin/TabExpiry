@@ -11,7 +11,7 @@
 	"background": {
 		"service_worker": "background.js"
 	},
-	"permissions": ["tabs", "storage", "alarms", "activeTab"],
+	"permissions": ["tabs", "storage", "notifications", "alarms", "activeTab"],
 	"action": {
 		"default_popup": "popup.html",
 		"default_icon": {

@@ -132,7 +132,7 @@ export class TabManagerService {
 	}
 
 	private truncate(text: string, num: number) {
-		if (text.length > num) {
+		if (text?.length > num) {
 			return `${text.substring(0, num - 3)}...`;
 		}
 		return text;
