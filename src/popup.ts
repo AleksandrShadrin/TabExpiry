@@ -1,4 +1,4 @@
-// popup.ts
+const MINUTE_MILLISECONDS = 60000;
 
 document.addEventListener("DOMContentLoaded", () => {
 	const form = document.getElementById("settings-form") as HTMLFormElement;
@@ -16,7 +16,8 @@ document.addEventListener("DOMContentLoaded", () => {
 	) as HTMLInputElement;
 
 	chrome.storage.local.get(["expirationTime"], (result) => {
-		const totalMinutes = (result.expirationTime || 0) / 60000;
+		const totalMinutes =
+			(result.expirationTime || 600000) / MINUTE_MILLISECONDS;
 
 		const weeks = Math.floor(totalMinutes / (7 * 24 * 60));
 		const days = Math.floor((totalMinutes - weeks * 7 * 24 * 60) / (24 * 60));
@@ -31,7 +32,6 @@ document.addEventListener("DOMContentLoaded", () => {
 		minutesInput.value = minutes.toString();
 	});
 
-	// Save the expiration time setting when the form is submitted
 	form.addEventListener("submit", (event) => {
 		event.preventDefault();
 
@@ -40,8 +40,11 @@ document.addEventListener("DOMContentLoaded", () => {
 		const hours = parseInt(hoursInput.value, 10);
 		const minutes = parseInt(minutesInput.value, 10);
 
-		const expirationTime =
-			(weeks * 7 * 24 * 60 + days * 24 * 60 + hours * 60 + minutes) * 60 * 1000;
+		const expirationTime = Math.max(
+			(weeks * 7 * 24 * 60 + days * 24 * 60 + hours * 60 + minutes) *
+				MINUTE_MILLISECONDS,
+			MINUTE_MILLISECONDS
+		);
 
 		chrome.storage.local.set({ expirationTime }, () => {
 			window.close();

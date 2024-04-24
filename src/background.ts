@@ -1,8 +1,18 @@
 import { TabManagerService } from "./services/TabManagerService";
 
-const tabManagerService = new TabManagerService(60000); // Set the desired expiration time
+const tabManagerService = new TabManagerService();
 
 tabManagerService.initializeTabTimes();
+
+async function checkAlarmState() {
+	const alarm = await chrome.alarms.get("check-tabs-alarm");
+
+	if (!alarm) {
+		await chrome.alarms.create("check-tabs-alarm", { periodInMinutes: 1 });
+	}
+}
+
+checkAlarmState();
 
 // Update the timestamp when the tab is first created or activated
 chrome.tabs.onCreated.addListener((tab) => {
@@ -11,21 +21,9 @@ chrome.tabs.onCreated.addListener((tab) => {
 	}
 });
 
-chrome.tabs.onActivated.addListener((activeInfo) => {
-	tabManagerService.updateTabActivity(activeInfo.tabId);
+chrome.tabs.onActivated.addListener(async (activeInfo) => {
+	await tabManagerService.setLastActiveTab(activeInfo.tabId);
 });
-
-// Listen for messages from content scripts and update the tab time
-chrome.runtime.onMessage.addListener((message, sender) => {
-	if (message.tabUpdated && sender.tab?.id) {
-		tabManagerService.updateTabActivity(sender.tab.id);
-	}
-});
-
-// Check inactive tabs at a regular interval and close them if necessary
-setInterval(() => {
-	tabManagerService.checkInactiveTabsAndCloseThem();
-}, 5000);
 
 // Remove tab information from the repository when a tab is closed
 chrome.tabs.onRemoved.addListener((tabId) => {
@@ -33,6 +31,16 @@ chrome.tabs.onRemoved.addListener((tabId) => {
 });
 
 // Log installation of the extension
-chrome.runtime.onInstalled.addListener(() => {
-	console.log("Extension installed");
+chrome.runtime.onInstalled.addListener(async ({ reason }) => {
+	if (reason !== "install") {
+		return;
+	}
+
+	console.log("Installed");
+});
+
+chrome.alarms.onAlarm.addListener((alarm) => {
+	if (alarm.name === "check-tabs-alarm") {
+		tabManagerService.checkInactiveTabsAndCloseThem();
+	}
 });

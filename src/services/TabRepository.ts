@@ -15,7 +15,7 @@ export class TabRepository {
 		});
 	}
 
-	static getTabTimes(): Promise<TabTimes> {
+	static async getTabTimes(): Promise<TabTimes> {
 		return new Promise((resolve, reject) => {
 			chrome.storage.local.get([this.storageKey], (result) => {
 				if (chrome.runtime.lastError) {
@@ -33,9 +33,21 @@ export class TabRepository {
 		return await this.setTabTimes(tabTimes);
 	}
 
+	static async updateTabTimes(tabIds: number[], time: number): Promise<void> {
+		const tabTimes = await this.getTabTimes();
+		tabIds.forEach((id) => (tabTimes[id] = time));
+		return await this.setTabTimes(tabTimes);
+	}
+
 	static async removeTab(tabId: number): Promise<void> {
 		const tabTimes = await this.getTabTimes();
 		delete tabTimes[tabId];
+		return await this.setTabTimes(tabTimes);
+	}
+
+	static async removeTabs(tabIds: number[]): Promise<void> {
+		const tabTimes = await this.getTabTimes();
+		tabIds.forEach((id) => delete tabTimes[id]);
 		return await this.setTabTimes(tabTimes);
 	}
 }

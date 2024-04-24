@@ -6,9 +6,9 @@ jest.mock("../../src/services/TabRepository", () => ({
 	},
 }));
 
-import { TabRepository, TabTimes } from "../../src/services/TabRepository";
-import { TabManagerService } from "../../src/services/TabManagerService";
-import chrome from "../__mocks__/chrome";
+import { TabRepository } from "../../../src/services/TabRepository";
+import { TabManagerService } from "../../../src/services/TabManagerService";
+import chrome from "../chrome";
 
 describe("TabManagerService", () => {
 	let tabManagerService: TabManagerService;

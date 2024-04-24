@@ -4,7 +4,6 @@ const CopyPlugin = require("copy-webpack-plugin");
 module.exports = {
 	entry: {
 		background: "./src/background.ts",
-		content: "./src/content.ts",
 		popup: "./src/popup.ts",
 	},
 	module: {
@@ -28,4 +27,7 @@ module.exports = {
 			patterns: [{ from: "public", to: "." }],
 		}),
 	],
+	optimization: {
+		minimize: false,
+	},
 };
