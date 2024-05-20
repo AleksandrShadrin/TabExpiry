@@ -1,11 +1,11 @@
-export type TabTimes = { [tabId: number]: number };
+import Tab from "../domain/Tab";
 
-export class TabRepository {
+export default class TabRepository {
 	private static readonly storageKey = "tabTimes";
 
-	static setTabTimes(tabTimes: TabTimes): Promise<void> {
+	static setTabs(tabs: Tab[]): Promise<void> {
 		return new Promise((resolve, reject) => {
-			chrome.storage.local.set({ [this.storageKey]: tabTimes }, () => {
+			chrome.storage.local.set({ [this.storageKey]: tabs }, () => {
 				if (chrome.runtime.lastError) {
 					reject(chrome.runtime.lastError);
 				} else {
@@ -15,39 +15,54 @@ export class TabRepository {
 		});
 	}
 
-	static async getTabTimes(): Promise<TabTimes> {
+	static async addTab(tab: Tab): Promise<void> {
+		const tabs = await this.getTabs();
+		tabs.push(tab);
+
+		return await this.setTabs(tabs);
+	}
+
+	static async getTabs(): Promise<Tab[]> {
 		return new Promise((resolve, reject) => {
 			chrome.storage.local.get([this.storageKey], (result) => {
 				if (chrome.runtime.lastError) {
 					reject(chrome.runtime.lastError);
 				} else {
-					resolve(result[this.storageKey] || {});
+					resolve(
+						(
+							result[this.storageKey] as { id: number; lastInteract: number }[]
+						)?.map((obj) => new Tab(obj.id, obj.lastInteract)) || []
+					);
 				}
 			});
 		});
 	}
 
 	static async updateTabTime(tabId: number, time: number): Promise<void> {
-		const tabTimes = await this.getTabTimes();
-		tabTimes[tabId] = time;
-		return await this.setTabTimes(tabTimes);
+		const tabs = await this.getTabs();
+		tabs.find((t) => t.id === tabId)?.update(time);
+
+		return await this.setTabs(tabs);
 	}
 
-	static async updateTabTimes(tabIds: number[], time: number): Promise<void> {
-		const tabTimes = await this.getTabTimes();
-		tabIds.forEach((id) => (tabTimes[id] = time));
-		return await this.setTabTimes(tabTimes);
+	static async updateTabs(tabIds: number[], time: number): Promise<void> {
+		const tabs = await this.getTabs();
+		tabs.filter((t) => t.id in tabIds).forEach((t) => t.update(time));
+
+		return await this.setTabs(tabs);
 	}
 
 	static async removeTab(tabId: number): Promise<void> {
-		const tabTimes = await this.getTabTimes();
-		delete tabTimes[tabId];
-		return await this.setTabTimes(tabTimes);
+		let tabs = await this.getTabs();
+		tabs.filter((t) => t.id === tabId);
+
+		return await this.setTabs(tabs);
 	}
 
 	static async removeTabs(tabIds: number[]): Promise<void> {
-		const tabTimes = await this.getTabTimes();
-		tabIds.forEach((id) => delete tabTimes[id]);
-		return await this.setTabTimes(tabTimes);
+		let tabs = await this.getTabs();
+		tabs.filter((t) => t.id in tabIds);
+
+		return await this.setTabs(tabs);
 	}
 }

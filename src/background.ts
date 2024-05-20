@@ -1,4 +1,4 @@
-import { TabManagerService } from "./services/TabManagerService";
+import TabManagerService from "./services/TabManagerService";
 
 const tabManagerService = new TabManagerService();
 
@@ -8,7 +8,7 @@ async function checkAlarmState() {
 	const alarm = await chrome.alarms.get("check-tabs-alarm");
 
 	if (!alarm) {
-		await chrome.alarms.create("check-tabs-alarm", { periodInMinutes: 1 });
+		await chrome.alarms.create("check-tabs-alarm", { periodInMinutes: 0.5 });
 	}
 }
 

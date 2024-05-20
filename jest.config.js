@@ -6,4 +6,5 @@ module.exports = {
 		"^.+\\.js$": "babel-jest",
 	},
 	moduleFileExtensions: ["ts", "js"],
+	setupFiles: ["<rootDir>/tests/__mocks__/chrome.js"],
 };
