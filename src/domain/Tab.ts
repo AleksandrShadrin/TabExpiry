@@ -1,8 +1,13 @@
+export type TabId = {
+	url: string;
+	index: number;
+};
+
 export default class Tab {
-	id: number;
+	id: TabId;
 	lastInteract: number;
 
-	constructor(id: number, lastInteract: number) {
+	constructor(id: TabId, lastInteract: number) {
 		this.id = id;
 		this.lastInteract = lastInteract;
 	}

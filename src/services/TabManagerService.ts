@@ -1,12 +1,14 @@
-import Tab from "../domain/Tab";
+import * as _ from "lodash";
+import Tab, { TabId } from "../domain/Tab";
 import TabRepository from "./TabRepository";
+import { convertToId } from "../utilities/chromeTabs";
 
 export default class TabManagerService {
 	private expirationTime: number;
 	private lastActiveTabId: number | undefined;
 
-	constructor(expirationTime: number = 60000) {
-		this.expirationTime = expirationTime; // Default to 1 minute
+	constructor(expirationTime: number = 600000) {
+		this.expirationTime = expirationTime; // Default to 10 minute
 	}
 
 	public async initializeTabTimes() {
@@ -14,12 +16,20 @@ export default class TabManagerService {
 
 		chrome.tabs.query({}, async (result) => {
 			for (let i = 0; i < result.length; i++) {
-				if (result[i].id && !tabs.some((t) => t.id === result[i].id)) {
+				const currentId = convertToId(result[i]);
+				if (result[i].id && !tabs.some((t) => _.isEqual(t.id, currentId))) {
 					await this.updateTabActivity(result[i].id);
-					await TabRepository.addTab(new Tab(result[i].id, Date.now()));
+					await TabRepository.addTab(new Tab(currentId, Date.now()));
 				}
 			}
 		});
+
+		const expirationTime = (await chrome.storage.local.get(["expirationTime"]))
+			.expirationTime;
+
+		if (!expirationTime) {
+			await chrome.storage.local.set({ expirationTime: this.expirationTime });
+		}
 	}
 
 	// Check all tabs and close the ones that have been inactive longer than the expirationTime
@@ -44,7 +54,8 @@ export default class TabManagerService {
 			const tabsToDelete = tabs
 				.filter(
 					(t) =>
-						t.isExpired(currentTime, expirationTime) && t.id !== currentTab?.id
+						t.isExpired(currentTime, expirationTime) &&
+						(!currentTab || _.isEqual(t, convertToId(currentTab)))
 				)
 				.sort((a, b) => a.lastInteract - b.lastInteract);
 
@@ -75,10 +86,10 @@ export default class TabManagerService {
 		chrome.notifications.onButtonClicked.addListener((notifId, btnIdx) => {
 			if (notifId === `delete-tabs`) {
 				if (btnIdx === 0) {
-					this.deleteTabs(tabs.map((t) => t?.id));
+					this.deleteTabs(chromeTabs);
 				} else if (btnIdx === 1) {
-					TabRepository.updateTabs(
-						chromeTabs.map((t) => t.id),
+					TabRepository.updateTabsTimes(
+						chromeTabs.map(convertToId),
 						Date.now()
 					);
 				}
@@ -87,25 +98,28 @@ export default class TabManagerService {
 		});
 	}
 
-	private deleteTabs(tabIds: number[]): void {
-		chrome.tabs.remove(tabIds, () => {
-			if (chrome.runtime.lastError) {
-				console.warn(`Error removing tab: ${chrome.runtime.lastError.message}`);
-			} else {
-				TabRepository.removeTabs(tabIds).then(() => {
-					console.log(`Tab ${tabIds} was closed and removed from repository.`);
-				});
+	private async deleteTabs(tabs: chrome.tabs.Tab[]) {
+		chrome.tabs.remove(
+			tabs.map((t) => t.id),
+			() => {
+				if (chrome.runtime.lastError) {
+					console.warn(
+						`Error removing tab: ${chrome.runtime.lastError.message}`
+					);
+				} else {
+					TabRepository.removeTabs(tabs.map(convertToId)).then(() => {
+						console.log(`Tab ${tabs} was closed and removed from repository.`);
+					});
+				}
 			}
-		});
+		);
 	}
 
 	public async setLastActiveTab(id: number) {
 		if (this.lastActiveTabId) {
-			const lastTab = await this.getChromeTab(this.lastActiveTabId);
+			const lastTab = await chrome.tabs.get(this.lastActiveTabId);
 
-			if (!lastTab) {
-				await TabRepository.removeTab(this.lastActiveTabId);
-			} else {
+			if (!!lastTab) {
 				await this.updateTabActivity(lastTab.id);
 			}
 		}
@@ -116,12 +130,30 @@ export default class TabManagerService {
 
 	// Update the last active time for a tab
 	public async updateTabActivity(tabId: number) {
-		await TabRepository.updateTabTime(tabId, Date.now());
+		const tab = await chrome.tabs.get(tabId);
+		await TabRepository.updateTabTime(convertToId(tab), Date.now());
 	}
 
 	// Remove a tab from the repository when it is closed
 	public async onTabClosed(tabId: number) {
-		await TabRepository.removeTab(tabId);
+		const tab = await chrome.tabs.get(tabId);
+		await TabRepository.removeTab({
+			index: tab.index,
+			url: tab.url,
+		});
+	}
+
+	// Update index on move tab
+	public async OnTabMove(id: number, from: number, to: number) {
+		const tab = await chrome.tabs.get(id);
+
+		const [fromTab, toTab] = (await TabRepository.getTabs()).filter(
+			(t) => t.id.index === from || t.id.index === to
+		);
+
+		await this.updateTabActivity(id);
+		await TabRepository.updateTabIndex(fromTab.id, to);
+		await TabRepository.updateTabIndex(toTab.id, from);
 	}
 
 	private truncate(text: string, num: number) {
@@ -140,12 +172,15 @@ export default class TabManagerService {
 	}
 
 	private async getChromeTab(
-		tabId: number
+		tabId: TabId
 	): Promise<chrome.tabs.Tab | undefined> {
 		try {
-			const result = await chrome.tabs.get(tabId);
+			const result = await chrome.tabs.query({
+				index: tabId.index,
+				url: tabId.url,
+			});
 
-			return result;
+			return result.find((_) => true);
 		} catch (_) {
 			return undefined;
 		}

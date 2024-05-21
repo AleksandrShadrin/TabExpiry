@@ -1,4 +1,5 @@
-import Tab from "../domain/Tab";
+import * as _ from "lodash";
+import Tab, { TabId } from "../domain/Tab";
 
 export default class TabRepository {
 	private static readonly storageKey = "tabTimes";
@@ -30,7 +31,7 @@ export default class TabRepository {
 				} else {
 					resolve(
 						(
-							result[this.storageKey] as { id: number; lastInteract: number }[]
+							result[this.storageKey] as { id: TabId; lastInteract: number }[]
 						)?.map((obj) => new Tab(obj.id, obj.lastInteract)) || []
 					);
 				}
@@ -38,30 +39,40 @@ export default class TabRepository {
 		});
 	}
 
-	static async updateTabTime(tabId: number, time: number): Promise<void> {
+	static async updateTabIndex(tabId: TabId, newIndex: number) {
 		const tabs = await this.getTabs();
-		tabs.find((t) => t.id === tabId)?.update(time);
+		const tab = tabs.find((t) => _.isEqual(t.id, tabId));
 
+		tab.id.index = newIndex;
 		return await this.setTabs(tabs);
 	}
 
-	static async updateTabs(tabIds: number[], time: number): Promise<void> {
+	static async updateTabTime(tabId: TabId, time: number): Promise<void> {
 		const tabs = await this.getTabs();
-		tabs.filter((t) => t.id in tabIds).forEach((t) => t.update(time));
+		tabs.find((t) => _.isEqual(t.id, tabId))?.update(time);
 
 		return await this.setTabs(tabs);
 	}
 
-	static async removeTab(tabId: number): Promise<void> {
-		let tabs = await this.getTabs();
-		tabs.filter((t) => t.id === tabId);
+	static async updateTabsTimes(tabIds: TabId[], time: number): Promise<void> {
+		const tabs = await this.getTabs();
+		tabs
+			.filter((t) => tabIds.some((id) => _.isEqual(id, t.id)))
+			.forEach((t) => t.update(time));
 
 		return await this.setTabs(tabs);
 	}
 
-	static async removeTabs(tabIds: number[]): Promise<void> {
+	static async removeTab(tabId: TabId): Promise<void> {
 		let tabs = await this.getTabs();
-		tabs.filter((t) => t.id in tabIds);
+		tabs.filter((t) => _.isEqual(t.id, tabId));
+
+		return await this.setTabs(tabs);
+	}
+
+	static async removeTabs(tabIds: TabId[]): Promise<void> {
+		let tabs = await this.getTabs();
+		tabs.filter((t) => tabIds.some((id) => _.isEqual(id, t.id)));
 
 		return await this.setTabs(tabs);
 	}
